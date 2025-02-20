@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Billing Amount with UPI</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        background-color: #f8f9fa;
+        padding: 20px;
+      }
+      h1 {
+        color: #333;
+      }
+      input, select {
+        padding: 10px;
+        font-size: 16px;
+        width: 80%;
+        max-width: 300px;
+        margin-bottom: 10px;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        color: white;
+        background-color: #007bff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      #qrCodeContainer {
+        margin-top: 20px;
+      }
+      #message {
+        margin-top: 15px;
+        font-size: 18px;
+        color: #007bff;
+        font-weight: bold;
+      }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  </head>
+  <body>
+    <h1>Billing Amount with UPI</h1>
+
+    <!-- Dropdown menu for selecting QR Code type -->
+    <label for="qrType">Select QR Code Type:</label>
+    <br />
+    <select id="qrType" onchange="toggleAmountInput()">
+      <option value="anyAmount">QR-Code Any Amount Received</option>
+      <option value="fixedAmount">QR-Code Only Entered Amount Received</option>
+    </select>
+    <br />
+
+    <!-- Input for entering billing amount -->
+    <div id="amountContainer">
+      <label for="amount">Enter Billing Amount (₹):</label>
+      <br />
+      <input type="number" id="amount" placeholder="Enter amount in ₹" />
+      <br />
+    </div>
+    <button onclick="generateQRCode()">Generate QR Code</button>
+
+    <div id="qrCodeContainer">
+      <canvas id="qrCode"></canvas>
+      <div id="message"></div>
+    </div>
+
+    <script>
+      const webAppURL = "https://script.google.com/macros/s/AKfycbwZxG4gc7DHAl4FnJXTUcF1z3GrDKWDA6C_oicDXSoJrx1uTI4DriSQNdJJJ9fI0djj/exec"; // Replace with your Web App URL
+
+      function toggleAmountInput() {
+        const qrType = document.getElementById('qrType').value;
+        const amountContainer = document.getElementById('amountContainer');
+        if (qrType === 'anyAmount') {
+          amountContainer.style.display = 'none'; // Hide amount input
+        } else {
+          amountContainer.style.display = 'block'; // Show amount input
+        }
+      }
+
+      window.onload = function () {
+        toggleAmountInput();
+      };
+
+      function generateQRCode() {
+        const qrType = document.getElementById('qrType').value;
+        const amount = document.getElementById('amount').value;
+        const messageElement = document.getElementById('message');
+        const qrCodeElement = document.getElementById('qrCode');
+
+        // Clear existing QR code and message
+        qrCodeElement.getContext('2d').clearRect(0, 0, qrCodeElement.width, qrCodeElement.height);
+        messageElement.textContent = '';
+
+        const upiId = "9991557121@ybl"; 
+        let qrText;
+
+        if (qrType === 'anyAmount') {
+          qrText = `upi://pay?pa=${upiId}&pn=Billing&cu=INR`;
+        } else if (qrType === 'fixedAmount') {
+          if (!amount || amount <= 0) {
+            alert('Please enter a valid amount.');
+            return;
+          }
+          qrText = `upi://pay?pa=${upiId}&pn=Billing&am=${amount}&cu=INR`;
+        }
+
+        // Generate the QR code
+        const qr = new QRious({
+          element: qrCodeElement,
+          value: qrText,
+          size: 200,
+        });
+        messageElement.textContent = "(Next Feature In) Scan QR Code to make payment. ";
+        // messageElement.textContent = "Scan QR Code to make payment.";
+
+
+        // Log payment details to Google Sheets
+        logPaymentToSheet(qrType, amount || 'Any Amount');
+      }
+
+      function logPaymentToSheet(qrType, amount) {
+        fetch(webAppURL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ qrType, amount }),
+        })
+          .then(response => response.json())
+          .then(data => {
+            if (data.status === "success") {
+              alert("Payment data stored successfully!");
+            } else {
+              alert("Failed to store payment data. Please try again.");
+            }
+          })
+          .catch(error => {
+            console.error("Error:", error);
+            alert("An error occurred while storing payment data.");
+          });
+      }
+    </script>
+  </body>
+</html>
